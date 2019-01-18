@@ -15,6 +15,14 @@ library(rnaturalearth)
 library(sf)
 library(lubridate)
 library(amt)
+library(knitr)
+library(maptools)
+library(raster)
+library(move)
+library(ggmap)
+library(tibble)
+library(leaflet)
+library(dplyr)
 
 # remember to arrange Morgan's data!
 # Section 1: Load the data ----
@@ -40,9 +48,16 @@ morgan_data
 # drop missing rows
 morgan_data<- morgan_data %>% drop_na
 
+# extract one id for testing
+levels(factor(morgan_data$id))
+temp<-filter(morgan_data,id=="X071"); tail(temp)
+
+
+# some are in day/month/year format e.g. X016_Complete; X020_Final; X021_Final; X022_Complete; X032_Final; X033_Complete;  
+# some are in month/day/year format e.g. X023; X027; X042; X050; X051; X052; X053; X055; X056; X057; X071
+
 # set the time column
-morgan_data$New_time<-parse_date_time(x=morgan_data$time,c("%m/%d/%Y %H:%M:%S", "%d-%m-%Y %H:%M", "%d-%m-%Y %H:%M:%S", "%d/%m/%Y %H:%M:%S","m/d/Y H:M"))
-morgan_data
+morgan_data$New_time<-parse_date_time(x=morgan_data$time,c("%d/%m/%Y %H:%M"))
 
 # Morgan's data is in reverse order of time
 # sort by the bird ID and reverse the order
@@ -63,27 +78,111 @@ data.frame(max_time)
 # keep only the new time data
 morgan_data <- select(morgan_data, New_time,long,lat,id,species,study)
 morgan_data <- rename(morgan_data, time = New_time)
-morgan_data
+
 
 # try to amt package 
-X016_Complete <-  filter(morgan_data,id=="X016_Complete")
-X016_Complete <- mk_track(X016_Complete, .x = long, .y = lat, .t =time, crs = sp::CRS("+init=epsg:4326"))
-summarize_sampling_rate(X016_Complete)
+trk <- mk_track(morgan_data, .x=long, .y=lat, .t=time, id = id, 
+                crs = CRS("+init=epsg:4326"))
 
-stps <- track_resample(X016_Complete, rate = hours(2), tolerance = minutes(30)) %>%
-  filter_min_n_burst(min_n = 3) %>% steps_by_burst() %>%
-  time_of_day(include.crepuscule = FALSE)
+# Now it is easy to calculate day/night with either movement track
+trk <- trk %>% time_of_day()
 
-str(stps)
 
-land_use <- raster("data/raw_data/ESACCI-LC-L4-LC10-Map-20m-P1Y-2016-v1.0.tif")
-str(land_use)
+#' Save the class here (and apply it later after adding columns to the 
+#' object)
+trk.class<-class(trk)
 
-grass <- land_use == 3
-names(grass) <- "grass"
+# nest by id
+nesttrk<-trk%>%nest(-id)
+nesttrk
 
-# Create a box as a Spatial object and crop your raster by the box.
-e <- as(extent(-16, -7.25, 4, 12.75), 'SpatialPolygons')
-crs(e) <- "+proj=longlat +datum=WGS84 +no_defs"
-r <- crop(worldpopcount, e)
+#' We can add a columns to each nested column of data using purrr::map
+trk<-trk %>% nest(-id) %>% 
+  mutate(dir_abs = map(data, direction_abs,full_circle=TRUE, zero="N"), 
+         dir_rel = map(data, direction_rel), 
+         sl = map(data, step_lengths),
+         nsd_=map(data, nsd))%>%unnest()
+
+#' Now, calculate month, year, hour, week of each observation and append these to the dataset
+#' Unlike the movement charactersitics, these calculations can be done all at once, 
+#' since they do not utilize successive observations (like step lengths and turn angles do).
+trk<-trk%>% 
+  mutate(
+    week=week(t_),
+    month = month(t_, label=TRUE), 
+    year=year(t_),
+    hour = hour(t_)
+  )
+
+
+#' Now, we need to again tell R that this is a track (rather 
+#' than just a data frame)
+class(trk)
+class(trk)<-trk.class
+
+#' Lets take a look at what we created
+trk <- trk %>% group_by(id)
+trk
+#' ## Some plots of movement characteristics
+
+#' ### Absolute angles (for each movement) relative to North 
+#' We could use a rose diagram (below) to depict the distribution of angles. 
+#+fig.height=12, fig.width=12
+ggplot(trk, aes(x = dir_abs, y=..density..)) + geom_histogram(breaks = seq(0,360, by=20))+
+  coord_polar(start = 0) + theme_minimal() + 
+  scale_fill_brewer() + ylab("Density") + ggtitle("Angles Direct") + 
+  scale_x_continuous("", limits = c(0, 360), breaks = seq(0, 360, by=20), 
+                     labels = seq(0, 360, by=20))+
+  facet_wrap(~id)
+
+#' ### Turning angles 
+#' 
+#' Note: a 0 indicates the animal continued to move in a straight line, a 180 
+#' indicates the animal turned around (but note, resting + measurement error often can
+#' make it look like the animal turned around).
+#+fig.height=12, fig.width=12
+ggplot(trk, aes(x = dir_rel, y=..density..)) + geom_histogram(breaks = seq(-180,180, by=20))+
+  coord_polar(start = 0) + theme_minimal() + 
+  scale_fill_brewer() + ylab("Density") + ggtitle("Angles Direct") + 
+  scale_x_continuous("", limits = c(-180, 180), breaks = seq(-180, 180, by=20), 
+                     labels = seq(-180, 180, by=20))+
+  facet_wrap(~id)
+
+#' ### Turning angles as histograms
+#+fig.height=12, fig.width=12
+ggplot(trk, aes(x = dir_rel)) +  geom_histogram(breaks = seq(-180,180, by=20))+
+  theme_minimal() + 
+  scale_fill_brewer() + ylab("Count") + ggtitle("Angles Relative") + 
+  scale_x_continuous("", limits = c(-180, 180), breaks = seq(-180, 180, by=20),
+                     labels = seq(-180, 180, by=20))+facet_wrap(~id, scales="free")
+
+#' ### Net-squared displacement over time for each individual
+#+fig.height=12, fig.width=12
+ggplot(trk, aes(x = t_, y=nsd_)) + geom_point()+
+  facet_wrap(~id, scales="free")
+
+
+#' ## Explore movement characteristics by (day/night, hour, month)
+#' 
+#' ### step length distribution by day/night
+#' 
+#+fig.height=12, fig.width=12, warning=FALSE, message=FALSE
+ggplot(trk, aes(x = tod_, y = log(sl))) + 
+  geom_boxplot()+geom_smooth()+facet_wrap(~id)
+
+#' ## SSF prep
+#' 
+#' SSFs assume that data have been collected at regular time intervals.
+#' We can use the track_resample function to regularize the trajectory so that
+#' all points are located within some tolerence of each other in time. To figure
+#' out a meaningful tolerance range, we should calculate time differences between
+#' locations & look at as a function of individual.
+(timestats<-trk %>% nest(-id) %>% mutate(sr = map(data, summarize_sampling_rate)) %>%
+    dplyr::select(id, sr) %>% unnest)
+
+#' Time intervals range from every 2 to 15 minutes on average, depending
+#' on the individual.  Lets add on the time difference to each obs.
+trk<-trk %>% group_by(id) %>% mutate(dt_ = t_ - lag(t_, default = NA))
+trk
+
 
