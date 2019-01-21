@@ -8,21 +8,18 @@
 rm(list=ls())
 
 # Load the required packages
-library(tidyverse)
-library(sp)
-library(hablar)
-library(rnaturalearth)
-library(sf)
-library(lubridate)
-library(amt)
 library(knitr)
+library(lubridate)
 library(maptools)
 library(raster)
 library(move)
+library(amt) 
 library(ggmap)
 library(tibble)
 library(leaflet)
 library(dplyr)
+library(readr)
+library(tidyverse)
 
 # remember to arrange Morgan's data!
 # Section 1: Load the data ----
@@ -48,16 +45,49 @@ morgan_data
 # drop missing rows
 morgan_data<- morgan_data %>% drop_na
 
-# extract one id for testing
-levels(factor(morgan_data$id))
-temp<-filter(morgan_data,id=="X071"); tail(temp)
-
-
-# some are in day/month/year format e.g. X016_Complete; X020_Final; X021_Final; X022_Complete; X032_Final; X033_Complete;  
-# some are in month/day/year format e.g. X023; X027; X042; X050; X051; X052; X053; X055; X056; X057; X071
+#' Check for duplicated observations (ones with same lat, long, timestamp,
+#'  and individual identifier).
+ind2<-morgan_data %>% select(time, long, lat, id) %>%
+  duplicated
+sum(ind2) 
+# remove them 
+morgan_data %>% distinct(time, long, lat, id)
 
 # set the time column
-morgan_data$New_time<-parse_date_time(x=morgan_data$time,c("%d/%m/%Y %H:%M"))
+# some are in day/month/year format e.g. X016_Complete; X020_Final; X021_Final; X022_Complete; X032_Final; X033_Complete;  
+# some are in month/day/year format e.g. X023; X027; X042; X050; X051; X052; X053; X055; X056; X057; X071
+levels(factor(morgan_data$id))
+temp1<-filter(morgan_data,
+               id == "X016_Complete" |
+               id=="X021_Final" | 
+               id == "X020_Final" |
+               id == "X021_Final" |
+               id == "X022_Complete" |
+               id == "X032_Final" |
+               id == "X033_Complete" ); tail(temp1) ;head(temp1)
+temp1
+temp1$New_time<-parse_date_time(x=temp1$time,c("%d/%m/%Y %H:%M"))
+tail(temp1)
+
+temp2<-filter(morgan_data, 
+                id == "X023" |
+                id == "X027" |
+                id == "X042" |
+                id == "X050" |
+                id == "X051" |
+                id == "X052" |
+                id == "X053" |
+                id == "X055" |
+                id == "X056" |
+                id == "X057" |
+                id == "X071" ); tail(temp2) ;head(temp2)
+temp2
+temp2$New_time<-parse_date_time(x=temp2$time,c("%m/%d/%Y %H:%M"))
+tail(temp2)
+
+# stick them back together again
+morgan_data <- full_join(temp1,temp2)
+morgan_data
 
 # Morgan's data is in reverse order of time
 # sort by the bird ID and reverse the order
@@ -185,4 +215,108 @@ ggplot(trk, aes(x = tod_, y = log(sl))) +
 trk<-trk %>% group_by(id) %>% mutate(dt_ = t_ - lag(t_, default = NA))
 trk
 
+# select individuals that have temporal resolution of ~ 15 mins 
+trk<- filter(trk,id=="X027"|
+         id=="X042"|
+         id=="X023"|
+         id=="X050"|
+         id=="X051"|
+         id=="X053"|
+         id=="X052"|
+         id=="X071"|
+         id=="X056"|
+         id=="X057"|
+         id=="X055")
+
+# need to run timestats again for the subsetted dataframe so that the IDs match up below
+(timestats<-trk %>% nest(-id) %>% mutate(sr = map(data, summarize_sampling_rate)) %>%
+    dplyr::select(id, sr) %>% unnest)
+
+
+#'  Loop over the individuals and do the following:
+#' 
+#' - Regularize trajectories using an appropriate time window (see e.g., below) 
+#' - calculate new dt values
+#' - Create bursts using individual-specific time intervals
+#' - Generate random steps within each burst
+#' 
+#' The random steps are generated using the following approach:
+#' 
+#' 1. Fit a gamma distribution to step lenghts
+#' 2. Fit a von mises distribution to turn angles
+#' 3. Use these distribution to draw new turns and step lengths, form new simulated steps
+#' and generate random x,y values.
+#' 
+
+#+warning=FALSE
+ssfdat<-NULL
+temptrk<-with(trk, track(x=x_, y=y_, t=t_, id=id))
+uid<-unique(trk$id) # individual identifiers
+luid<-length(uid) # number of unique individuals
+for(i in 1:luid){
+  # Subset individuals & regularize track
+  temp<-temptrk%>% filter(id==uid[i]) %>% 
+    track_resample(rate=minutes(round(timestats$median[i])), 
+                   tolerance=minutes(max(10,round(timestats$median[i]/5))))
+  
+  # Get rid of any bursts without at least 2 points
+  temp<-filter_min_n_burst(temp, 2)
+  
+  # burst steps
+  stepstemp<-steps_by_burst(temp)
+  
+  # create random steps using fitted gamma and von mises distributions and append
+  rnd_stps <- stepstemp %>%  random_steps(n = 15)
+  
+  # append id
+  rnd_stps<-rnd_stps%>%mutate(id=uid[i])
+  
+  # append new data to data from other individuals
+  ssfdat<-rbind(rnd_stps, ssfdat)
+}
+ssfdat<-as_tibble(ssfdat)
+ssfdat
+
+
+#' Relabel as utms 
+ssfdat$utm.easting<-ssfdat$x2_
+ssfdat$utm.northing<-ssfdat$y2_
+
+#' ## Write out data for further annotating
+#' 
+#' Need to rename variables so everything is in the format Movebank requires for annotation of generic time-location 
+#' records (see https://www.movebank.org/node/6608#envdata_generic_request). This means, we need the following variables:
+#' 
+#' - location-lat (perhaps with addition of Easting/Northing in UTMs)
+#' - location-long (perhaps with addition of Easting/Northing in UTMs)
+#' - timestamp (in Movebank format)
+#' 
+#' Need to project to lat/long, while also keeping lat/long. Then rename
+#' variables and write out the data sets. With the SSFs, we have the extra complication of
+#' having a time and location at both the start and end of the step.  
+#' 
+#' For the time being, we will assume we want to annotate variables at the end of the step
+#' but use the starting point of the step as the timestamp.
+#' 
+#' You could also calculate the midpoint of the timestep like this:
+#' data$timestamp.midpoint <- begintime + (endtime-begintime)/2
+
+ssfdat2 <- SpatialPointsDataFrame(ssfdat[,c("x2_","y2_")], ssfdat, 
+                                  proj4string=CRS("+proj=longlat +datum=WGS84"))  
+ssf.df <- data.frame(spTransform(ssfdat2, CRS("+proj=longlat +datum=WGS84"))) 
+names(ssf.df)[c(13,16,17)] <-c("individual.local.identifier", "location-long", "location-lat")
+ssf.df$timestamp<-ssf.df$t1_
+ssf.df %>% select('location-lat', x1_, x2_, y1_, y2_, 'location-long') %>% head
+
+
+#' These points then need to be annotated prior to fitting ssfs. Let's 
+#' write out 2 files:
+#' 
+#' - FisherSSF2018.csv will contain all points and identifying information. 
+#' - FisherSSFannotate.csv will contain only the columns used to create the annotation.
+#' 
+#' The latter file will take up less space, making it easier to annotate (and also possible to upload to github)
+write.csv(ssf.df, file="data/AllStepsMorgan.csv", row.names=FALSE)
+ssf.df<-ssf.df %>% select("timestamp", "location-long", "location-lat","individual.local.identifier")
+write.csv(ssf.df, file="data/MorganSSFannotate.csv", row.names = FALSE)
 
