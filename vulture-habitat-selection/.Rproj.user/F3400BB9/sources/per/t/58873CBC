@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1548781001393.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2483834234",
+    "id" : "58873CBC",
+    "lastKnownWriteTime" : 1548792097,
+    "last_content_update" : 1548792097648,
+    "path" : "~/Science/Manuscripts/vulture-habitat-selection/vulture-habitat-selection/code/morgan_pfeiffer.R",
+    "project_path" : "code/morgan_pfeiffer.R",
+    "properties" : {
+        "cursorPosition" : "283,0",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

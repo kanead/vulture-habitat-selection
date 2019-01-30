@@ -1,44 +1,4 @@
-#########################################################################
-# Vulture comparative analysis
-# tutorials here https://www.jessesadler.com/post/gis-with-r-intro/
-# and here https://www.r-spatial.org/
-# 06 November 2018
-# 01_prep_data.R
-#########################################################################
-rm(list=ls())
-
-# Load the required packages
-library(knitr)
-library(lubridate)
-library(maptools)
-library(raster)
-library(move)
-library(amt) 
-library(ggmap)
-library(tibble)
-library(leaflet)
-library(dplyr)
-library(readr)
-library(tidyverse)
-
-# remember to arrange Morgan's data!
-# Section 1: Load the data ----
-# data_path <- "data/raw_data"   # path to the data
-#data_path <- "C:\\Users\\Adam Kane\\Documents\\Manuscripts\\project-structure-master\\data\\raw_data"
-data_path <- "C:\\Users\\Adam\\Documents\\Science\\Manuscripts\\vulture-habitat-selection\\data"
-
-files <- dir(data_path, pattern = "*.csv") # get file names
-
-mydata <- files %>%
-  # read in all the files, appending the path before the filename
-  map(~ read_csv(file.path(data_path, .))) %>% 
-  reduce(rbind)
-
-# filter the data to remove outliers
-mydata <- filter(mydata, lat < 20 & lat > -40 & long > 10)
-head(mydata)
-tail(mydata)
-str(mydata)
+# Morgan Pfeiffer's SA Vulture Tracking Dataset 
 
 # select Morgan's data
 morgan_data <- filter(mydata, study == "pfeiffer")
@@ -112,7 +72,7 @@ morgan_data <- select(morgan_data, New_time,long,lat,id,species,study)
 morgan_data <- rename(morgan_data, time = New_time)
 
 
-# try to amt package 
+# try the amt package 
 trk <- mk_track(morgan_data, .x=long, .y=lat, .t=time, id = id, 
                 crs = CRS("+init=epsg:4326"))
 
@@ -280,10 +240,6 @@ ssfdat<-as_tibble(ssfdat)
 ssfdat
 
 
-#' Relabel as utms 
-ssfdat$utm.easting<-ssfdat$x2_
-ssfdat$utm.northing<-ssfdat$y2_
-
 #' ## Write out data for further annotating
 #' 
 #' Need to rename variables so everything is in the format Movebank requires for annotation of generic time-location 
@@ -302,23 +258,26 @@ ssfdat$utm.northing<-ssfdat$y2_
 #' 
 #' You could also calculate the midpoint of the timestep like this:
 #' data$timestamp.midpoint <- begintime + (endtime-begintime)/2
-
+#'
+#' we want the x2_ and y2_ columns for Movebank 
+head(ssfdat)
+ncol(ssfdat)
 ssfdat2 <- SpatialPointsDataFrame(ssfdat[,c("x2_","y2_")], ssfdat, 
                                   proj4string=CRS("+proj=longlat +datum=WGS84"))  
 ssf.df <- data.frame(spTransform(ssfdat2, CRS("+proj=longlat +datum=WGS84"))) 
-names(ssf.df)[c(13,16,17)] <-c("individual.local.identifier", "location-long", "location-lat")
+
+names(ssf.df)[names(ssf.df) == 'id'] <- 'individual.local.identifier'
+names(ssf.df)[names(ssf.df) == 'x2_.1'] <- 'location-long'
+names(ssf.df)[names(ssf.df) == 'y2_.1'] <- 'location-lat'
+head(ssf.df)
+
 ssf.df$timestamp<-ssf.df$t1_
 ssf.df %>% select('location-lat', x1_, x2_, y1_, y2_, 'location-long') %>% head
 
 
 #' These points then need to be annotated prior to fitting ssfs. Let's 
-#' write out 2 files:
-#' 
-#' - FisherSSF2018.csv will contain all points and identifying information. 
-#' - FisherSSFannotate.csv will contain only the columns used to create the annotation.
-#' 
-#' The latter file will take up less space, making it easier to annotate (and also possible to upload to github)
-write.csv(ssf.df, file="data/AllStepsMorgan.csv", row.names=FALSE)
-ssf.df<-ssf.df %>% select("timestamp", "location-long", "location-lat","individual.local.identifier")
-write.csv(ssf.df, file="data/MorganSSFannotate.csv", row.names = FALSE)
+#' Can subset to certain essential columns so as take up less space, making it easier to annotate (and also possible to upload to github)
+ssf.df.out<-ssf.df %>% select("timestamp", "location-long", "location-lat","individual.local.identifier","case_")
+head(ssf.df.out)
+write.csv(ssf.df.out, file="movebank/MorganSSFannotate.csv", row.names = FALSE)
 
