@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1548848603485.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2843047892",
+    "id" : "FB25770E",
+    "lastKnownWriteTime" : 1548868444,
+    "last_content_update" : 1548868444948,
+    "path" : "~/Manuscripts/project-structure-master/scripts/vulture-habitat-selection/code/intermountain.R",
+    "project_path" : "code/intermountain.R",
+    "properties" : {
+        "cursorPosition" : "0,0",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

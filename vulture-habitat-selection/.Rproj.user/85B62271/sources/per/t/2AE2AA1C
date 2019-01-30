@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1548860999235.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3629266719",
+    "id" : "2AE2AA1C",
+    "lastKnownWriteTime" : 1548868834,
+    "last_content_update" : 1548868834981,
+    "path" : "~/Manuscripts/project-structure-master/scripts/vulture-habitat-selection/code/ralph.R",
+    "project_path" : "code/ralph.R",
+    "properties" : {
+        "cursorPosition" : "53,34",
+        "scrollLine" : "16",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 7,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

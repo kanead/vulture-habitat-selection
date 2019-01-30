@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1548842797702.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2002060685",
+    "id" : "DB9B3BC",
+    "lastKnownWriteTime" : 1548848775,
+    "last_content_update" : 1548848775657,
+    "path" : "~/Manuscripts/project-structure-master/scripts/vulture-habitat-selection/code/1_load_data.R",
+    "project_path" : "code/1_load_data.R",
+    "properties" : {
+        "cursorPosition" : "41,0",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
