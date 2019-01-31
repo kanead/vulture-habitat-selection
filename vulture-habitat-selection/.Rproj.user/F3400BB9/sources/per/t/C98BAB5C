@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1548960194632.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3126825732",
+    "id" : "C98BAB5C",
+    "lastKnownWriteTime" : 1548961631,
+    "last_content_update" : 1548961631339,
+    "path" : "~/Science/Manuscripts/vulture-habitat-selection/vulture-habitat-selection/code/model_fitting_ck_tanz.R",
+    "project_path" : "code/model_fitting_ck_tanz.R",
+    "properties" : {
+        "cursorPosition" : "8,26",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 8,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
