@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1549014618575.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "130793213",
+    "id" : "43D5E5B8",
+    "lastKnownWriteTime" : 1549016706,
+    "last_content_update" : 1549016706529,
+    "path" : "~/Manuscripts/project-structure-master/scripts/vulture-habitat-selection/code/prep_masai.R",
+    "project_path" : "code/prep_masai.R",
+    "properties" : {
+        "cursorPosition" : "203,0",
+        "scrollLine" : "162",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

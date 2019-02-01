@@ -6,17 +6,26 @@ library(glmmTMB)
 library(INLA)
 library(lme4)
 
-dat <- read_csv("annotated/Martes pennanti LaPoint New York.csv") %>%
-  filter(!is.na(`location-lat`)) %>%
-  select(x = `location-long`, y = `location-lat`,
-         t = `timestamp`, id = `tag-local-identifier`) %>%
-  filter(id %in% c(1465, 1466, 1072, 1078, 1016, 1469))
-dat_all <- dat %>% nest(-id)
-dat_all <- dat_all %>%
-  mutate(trk = map(data, function(d) {
-    amt::make_track(d, x, y, t, crs = sp::CRS("+init=epsg:4326")) %>%
-      amt::transform_coords(sp::CRS("+init=epsg:5070"))
-  }))
+annotated_data <- read_csv("annotated/step selection corinne-4620997910743285856.csv") 
+head(annotated_data)
+raw_data <- read_csv("full/CorinneSSFAll.csv")
+head(raw_data)
+
+raw_data <- select(raw_data, case_, sl_, step_id_)
+
+raw_data$veg <- annotated_data$`MODIS Land VCF 250m Yearly Terra Percent Non-Tree Vegetation`
+raw_data$uplift <- annotated_data$`Movebank Orographic Uplift (from ASTER DEM and NARR)`
+
+ssfdat <- raw_data
+
+#' Center and scale variables
+ssfdat<-ssfdat %>% mutate(elev=as.numeric(scale(veg)), 
+                          popD=as.numeric(scale(uplift)))
+
+
+#' Fit an SSF to a single animal
+summary(fit_issf(case_ ~ veg+uplift+sl_+log(sl_)+strata(step_id_), 
+                 data = subset(ssfdat, id=="M1")))
 
 
 land_use <- raster("data/landuse_study_area.tif")

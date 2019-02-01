@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1549040426539.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3230733227",
+    "id" : "4A9611D8",
+    "lastKnownWriteTime" : 1549040776,
+    "last_content_update" : 1549040776647,
+    "path" : "~/Manuscripts/project-structure-master/scripts/vulture-habitat-selection/code/prep_ck_tanz.R",
+    "project_path" : "code/prep_ck_tanz.R",
+    "properties" : {
+        "cursorPosition" : "188,53",
+        "scrollLine" : "169"
+    },
+    "relative_order" : 6,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

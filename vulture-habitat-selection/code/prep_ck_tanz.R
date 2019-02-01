@@ -211,3 +211,5 @@ ssf.df.out<-ssf.df %>% select("timestamp", "location-long", "location-lat","indi
 head(ssf.df.out)
 write.csv(ssf.df.out, file="movebank/CorinneSSFannotate.csv", row.names = FALSE)
 
+#' we can export the whole file with all of the extra columns we added 
+write.csv(ssf.df, file="full/CorinneSSFAll.csv", row.names = FALSE)
